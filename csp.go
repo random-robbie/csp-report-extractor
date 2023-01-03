@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
 	"strings"
 )
 
@@ -25,9 +24,7 @@ func main() {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := &http.Client{Transport: tr, CheckRedirect: func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}}
+	client := &http.Client{Transport: tr}
 
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
@@ -44,24 +41,29 @@ func main() {
 	defer resp.Body.Close()
 
 	// Get the Content-Security-Policy-Report-Only header, if present
-	reportURI := ""
-	for k, v := range resp.Header {
-		if strings.EqualFold(k, "Content-Security-Policy-Report-Only") {
-			reportURI = v[0]
-			break
+	headerValue := resp.Header.Get("Content-Security-Policy-Report-Only")
+
+	// If the header is not present, get the Content-Security-Policy header
+	if headerValue == "" {
+		headerValue = resp.Header.Get("Content-Security-Policy")
+	}
+
+	var reportURI string
+
+	parts := strings.Split(headerValue, ";")
+	for _, part := range parts {
+		kv := strings.SplitN(strings.TrimSpace(part), " ", 2)
+		if len(kv) != 2 {
+			continue
+		}
+
+		if kv[0] == "report-uri" {
+			reportURI = kv[1]
 		}
 	}
 
-	// If the header is not present, get the Content-Security-Policy header
-	if reportURI == "" {
-		reportURI = resp.Header.Get("Content-Security-Policy")
-	}
-
-	// Extract the report-uri value from the header
-	re := regexp.MustCompile(`report-uri (.*?);`)
-	matches := re.FindStringSubmatch(reportURI)
-	if len(matches) > 1 {
-		reportURL, err := url.Parse(matches[1])
+	if reportURI != "" {
+		reportURL, err := url.Parse(reportURI)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
