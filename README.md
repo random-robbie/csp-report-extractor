@@ -1,6 +1,6 @@
 # csp-report-extractor
 
-Extracts CSP report urls
+Extracts CSP report urls from the `report-uri` part in the headers.
 
 How to run
 ---
