@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 )
 
 func main() {
@@ -24,16 +25,34 @@ func main() {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := &http.Client{Transport: tr}
+	client := &http.Client{Transport: tr, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
 
-	resp, err := client.Get(u.String())
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	defer resp.Body.Close()
 
-	reportURI := resp.Header.Get("Content-Security-Policy-Report-Only")
+	// Get the Content-Security-Policy-Report-Only header, if present
+	reportURI := ""
+	for k, v := range resp.Header {
+		if strings.EqualFold(k, "Content-Security-Policy-Report-Only") {
+			reportURI = v[0]
+			break
+		}
+	}
+
+	// If the header is not present, get the Content-Security-Policy header
 	if reportURI == "" {
 		reportURI = resp.Header.Get("Content-Security-Policy")
 	}
