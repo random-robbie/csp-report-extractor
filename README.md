@@ -1,6 +1,6 @@
 # csp-report-extractor
 
-Extracts CSP report urls from the `report-uri` part in the headers.
+Extracts CSP report urls from the `report-uri` or `report-url` part in the headers.
 
 Writes results to `csp-found.txt`.
 
