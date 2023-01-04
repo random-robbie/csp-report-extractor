@@ -6,11 +6,19 @@ Writes results to `csp-found.txt`.
 
 You can provide either a URL or a file of urls.
 
+Install
+---
+```
+go install -v github.com/random-robbie/csp-report-extractor@latest
+```
+
+
+
 How to run
 ---
 
 ```
-go run csp.go "https://xxx.xxx.xxx.xxx/#/signin"
+csp "https://xxx.xxx.xxx.xxx/#/signin"
 
 https://xxx.xxx.xxx.xxx/vizql/csp-report
 ```
