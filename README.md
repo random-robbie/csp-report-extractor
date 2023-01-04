@@ -18,7 +18,7 @@ How to run
 ---
 
 ```
-csp "https://xxx.xxx.xxx.xxx/#/signin"
+csp-report-extractor "https://xxx.xxx.xxx.xxx/#/signin"
 
 https://xxx.xxx.xxx.xxx/vizql/csp-report
 ```
