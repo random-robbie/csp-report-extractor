@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -11,11 +12,46 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Please provide a URL as an argument")
-		os.Exit(1)
+		fmt.Println("Please provide a URL or file as an argument")
+		return
 	}
 
-	u, err := url.Parse(os.Args[1])
+	input := os.Args[1]
+
+	// Check if the argument is a file
+	if _, err := os.Stat(input); err == nil {
+		// Open the file
+		f, err := os.Open(input)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer f.Close()
+
+		// Read the file line by line
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			// Set the URL variable as the scanned line
+			url := scanner.Text()
+
+			// Send the URL to the grabber function
+			grabber(url)
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Println(err)
+		}
+	} else {
+		// Set the URL variable as the input argument
+		url := input
+
+		// Send the URL to the grabber function
+		grabber(url)
+	}
+}
+
+func grabber(url2 string) {
+
+	u, err := url.Parse(url2)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -74,5 +110,25 @@ func main() {
 		}
 
 		fmt.Println(reportURL)
+		if reportURI != "" {
+			// Open the file in append mode
+			f, err := os.OpenFile("csp-found.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			defer f.Close()
+
+			// Write the string to the file with a new line after it
+			_, err = fmt.Fprintln(f, reportURL)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			fmt.Println("Successfully wrote string to file")
+		} else {
+			fmt.Println("reportURI string is empty")
+		}
 	}
 }
