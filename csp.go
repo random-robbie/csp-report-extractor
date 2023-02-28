@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
+	"regexp"
 )
+
+var domainRegex = regexp.MustCompile(`([a-zA-Z0-9-]+)\.([a-z0-9-]+)?\.?s3[\.-]([a-z0-9-]+)?\.?amazonaws\.com`)
 
 func main() {
 	if len(os.Args) < 2 {
@@ -77,58 +79,26 @@ func grabber(url2 string) {
 	defer resp.Body.Close()
 
 	// Get the Content-Security-Policy-Report-Only header, if present
-	headerValue := resp.Header.Get("Content-Security-Policy-Report-Only")
+	headerValue := resp.Header.Get("Content-Security-Policy")
 
-	// If the header is not present, get the Content-Security-Policy header
-	if headerValue == "" {
-		headerValue = resp.Header.Get("Content-Security-Policy")
+	domains := domainRegex.FindAllString(headerValue, -1)
+
+	// Create a map to store unique domains
+	uniqueDomains := make(map[string]bool)
+
+	// Iterate over the list of domains and add them to the map
+	for _, domain := range domains {
+		uniqueDomains[domain] = true
 	}
 
-	var reportURI string
+	// Open file for saving
+	file, _ := os.OpenFile("csp-doms.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	defer file.Close()
 
-	parts := strings.Split(headerValue, ";")
-	for _, part := range parts {
-		kv := strings.SplitN(strings.TrimSpace(part), " ", 2)
-		if len(kv) != 2 {
-			continue
-		}
-
-		if kv[0] == "report-uri" {
-			reportURI = kv[1]
-		}
+	// Iterate over the unique domains and print them to the command line and file
+	for domain := range uniqueDomains {
+		fmt.Println(domain)
+		file.WriteString(domain + "\n")
 	}
 
-	if reportURI != "" {
-		reportURL, err := url.Parse(reportURI)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		if !reportURL.IsAbs() {
-			reportURL = u.ResolveReference(reportURL)
-		}
-
-		fmt.Println(reportURL)
-		if reportURI != "" {
-			// Open the file in append mode
-			f, err := os.OpenFile("csp-found.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			defer f.Close()
-
-			// Write the string to the file with a new line after it
-			_, err = fmt.Fprintln(f, reportURL)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			fmt.Println("Successfully wrote string to file")
-		} else {
-			fmt.Println("reportURI string is empty")
-		}
-	}
 }
